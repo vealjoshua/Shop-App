@@ -29,7 +29,6 @@ class _EditProductScreenState extends State<EditProductScreen> {
     'title': '',
     'price': '',
     'description': '',
-    'imageUrl': '',
   };
   bool _isLoading = false;
 
@@ -48,7 +47,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
             Provider.of<Products>(context, listen: false).findById(productId);
         _initValues = {
           'title': _editedProduct.title,
-          'price': _editedProduct.price.toString(),
+          'price': _editedProduct.price.toStringAsFixed(2),
           'description': _editedProduct.description,
           'imageUrl': '',
         };
@@ -80,19 +79,20 @@ class _EditProductScreenState extends State<EditProductScreen> {
     }
   }
 
-  void _saveForm() {
+  Future<void> _saveForm() async {
     if (_form.currentState.validate()) {
       _form.currentState.save();
       setState(() {
         _isLoading = true;
       });
       if (_editedProduct.id == null) {
-        print('Adding product');
-        Provider.of<Products>(context, listen: false)
-            .addProduct(_editedProduct)
-            .catchError((error) {
-          print('Caught Error');
-          return showDialog(
+        try {
+          await Provider.of<Products>(context, listen: false)
+              .addProduct(_editedProduct);
+
+          // Navigator.of(context).pop();
+        } catch (e) {
+          await showDialog(
             context: context,
             builder: (ctx) => AlertDialog(
               title: Text('An error occured!'),
@@ -107,20 +107,24 @@ class _EditProductScreenState extends State<EditProductScreen> {
               ],
             ),
           );
-        }).then((_) {
-          setState(() {
-            _isLoading = false;
-          });
-          Navigator.of(context).pop();
-        });
+        }
+        // finally {
+        //   setState(() {
+        //     _isLoading = false;
+        //   });
+        // }
       } else {
-        Provider.of<Products>(context, listen: false)
+        await Provider.of<Products>(context, listen: false)
             .updateProduct(_editedProduct);
         setState(() {
           _isLoading = false;
         });
-        Navigator.of(context).pop();
+        // Navigator.of(context).pop();
       }
+      setState(() {
+        _isLoading = true;
+      });
+      Navigator.of(context).pop();
     }
   }
 
@@ -153,6 +157,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
                         textInputAction: TextInputAction.next,
                         // onFieldSubmitted: (_) => FocusScope.of(context).requestFocus(_priceFocusNode),
                         onSaved: (newValue) {
+                          _initValues = {
+                            'title': newValue,
+                            'description': _editedProduct.description,
+                            'price': _editedProduct.price.toStringAsFixed(2),
+                          };
                           _editedProduct = Product(
                             id: _editedProduct.id,
                             title: newValue,
@@ -179,6 +188,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
                         // onFieldSubmitted: (_) => FocusScope.of(context)
                         // .requestFocus(_descriptionFocusNode),
                         onSaved: (newValue) {
+                          _initValues = {
+                            'title': _editedProduct.title,
+                            'description': _editedProduct.description,
+                            'price': newValue,
+                          };
                           _editedProduct = Product(
                             id: _editedProduct.id,
                             title: _editedProduct.title,
@@ -209,6 +223,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
                         keyboardType: TextInputType.multiline,
                         // focusNode: _descriptionFocusNode,
                         onSaved: (newValue) {
+                          _initValues = {
+                            'title': _editedProduct.description,
+                            'description': newValue,
+                            'price': _editedProduct.price.toStringAsFixed(2),
+                          };
                           _editedProduct = Product(
                             id: _editedProduct.id,
                             title: _editedProduct.title,
