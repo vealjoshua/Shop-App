@@ -7,13 +7,8 @@ import 'package:shop_app/models/http_exception.dart';
 import 'product.dart';
 
 class Products with ChangeNotifier {
-  final _productsURL = Uri.parse(
-      'https://shop-app-69e16-default-rtdb.firebaseio.com/products.json');
-
-  Uri _getProductUriById(String id) {
-    return Uri.parse(
-        'https://shop-app-69e16-default-rtdb.firebaseio.com/products/$id.json');
-  }
+  final String authToken;
+  final String userId;
 
   List<Product> _items = [
     // Product(
@@ -50,6 +45,8 @@ class Products with ChangeNotifier {
     // ),
   ];
 
+  Products(this.authToken, this.userId, this._items);
+
   List<Product> get items {
     return [..._items];
   }
@@ -62,14 +59,23 @@ class Products with ChangeNotifier {
     return _items.firstWhere((product) => product.id == id);
   }
 
-  Future<void> fetchAndSetProducts() async {
+  Future<void> fetchAndSetProducts([bool filterByUser = false]) async {
     try {
-      final response = await http.get(_productsURL);
+      final filterString =
+          filterByUser ? '&orderBy="creatorId"&equalTo="$userId"' : '';
+      final url = Uri.parse(
+          'https://shop-app-69e16-default-rtdb.firebaseio.com/products.json?auth=$authToken$filterString');
+
+      final response = await http.get(url);
       final extractedData = json.decode(response.body) as Map<String, dynamic>;
 
       if (extractedData == null) {
         return;
       }
+
+      final favoriteResponse = await http.get(Uri.parse(
+          'https://shop-app-69e16-default-rtdb.firebaseio.com/userFavorites/$userId.json?auth=$authToken'));
+      final favoriteData = json.decode(favoriteResponse.body);
 
       final List<Product> loadedProducts = [];
       extractedData.forEach((prodId, prodData) {
@@ -80,7 +86,8 @@ class Products with ChangeNotifier {
             description: prodData['description'],
             price: prodData['price'],
             imageUrl: prodData['imageUrl'],
-            isFavorite: prodData['isFavorite'],
+            isFavorite:
+                favoriteData == null ? false : favoriteData[prodId] ?? false,
           ),
         );
       });
@@ -94,13 +101,14 @@ class Products with ChangeNotifier {
   Future<void> addProduct(Product product) async {
     try {
       final response = await http.post(
-        _productsURL,
+        Uri.parse(
+            'https://shop-app-69e16-default-rtdb.firebaseio.com/products.json?auth=$authToken'),
         body: json.encode({
           'title': product.title,
           'description': product.description,
           'price': product.price,
           'imageUrl': product.imageUrl,
-          'isFavorite': product.isFavorite,
+          'creatorId': userId,
         }),
       );
 
@@ -123,7 +131,9 @@ class Products with ChangeNotifier {
   Future<void> updateProduct(Product newProduct) async {
     final prodIndex = _items.indexWhere((item) => item.id == newProduct.id);
     if (prodIndex > -1) {
-      await http.patch(_getProductUriById(newProduct.id),
+      await http.patch(
+          Uri.parse(
+              'https://shop-app-69e16-default-rtdb.firebaseio.com/products/${newProduct.id}.json?auth=$authToken'),
           body: jsonEncode({
             'title': newProduct.title,
             'description': newProduct.description,
@@ -140,7 +150,8 @@ class Products with ChangeNotifier {
         _items.indexWhere((product) => product.id == id);
 
     try {
-      final response = await http.delete(_getProductUriById(id));
+      final response = await http.delete(Uri.parse(
+          'https://shop-app-69e16-default-rtdb.firebaseio.com/products/$id.json?auth=$authToken'));
       if (response.statusCode >= 400) {
         throw HttpException('Could not delete product.');
       }
