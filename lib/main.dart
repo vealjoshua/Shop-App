@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
+import 'package:shop_app/helpers/custom_route.dart';
 
 import '../screens/splash_screen.dart';
 import '../providers/auth.dart';
@@ -44,6 +45,10 @@ class MyApp extends StatelessWidget {
         builder: (ctx, auth, _) => MaterialApp(
           title: 'MyShop',
           theme: ThemeData(
+            pageTransitionsTheme: PageTransitionsTheme(builders: {
+              TargetPlatform.android: CustomPageTransitionBuilder(),
+              TargetPlatform.iOS: CustomPageTransitionBuilder(),
+            }),
             colorScheme: ColorScheme.fromSwatch(
               primarySwatch: Colors.purple,
               accentColor: Colors.deepOrange,
